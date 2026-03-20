@@ -84,12 +84,18 @@ async function callGemini(apiKey: string, prompt: string): Promise<string | null
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
+const PRESET_TITLES = new Set(["CEO", "Founder", "CTO", "VP Sales", "CFO"]);
+
 export async function geminiSearchContact(
   apiKey: string,
   companyName: string,
   title: string,
 ): Promise<GeminiContactResult | null> {
-  const prompt = `You are a research assistant. Find the current ${title} of the company "${companyName}".
+  const titleInstruction = PRESET_TITLES.has(title)
+    ? `Find the current ${title} of the company "${companyName}".`
+    : `Find the person at "${companyName}" whose current job title contains the word "${title}" (e.g. "VP of ${title}", "Head of ${title}", "${title} Lead", "${title} Manager"). Their title MUST contain "${title}".`;
+
+  const prompt = `You are a research assistant. ${titleInstruction}
 
 CRITICAL RULES:
 - Search and verify before responding. Only return if you are highly confident.
@@ -130,6 +136,12 @@ Return only valid JSON, no markdown:
     };
 
     if (isInvalidContactResult(companyName, result)) return null;
+
+    // For custom keywords, enforce that the returned title actually contains the keyword
+    if (!PRESET_TITLES.has(title) && title.trim()) {
+      const keyword = title.trim().toLowerCase();
+      if (!result.jobTitle.toLowerCase().includes(keyword)) return null;
+    }
 
     return result;
   } catch {
