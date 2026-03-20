@@ -16,23 +16,26 @@ export interface ApolloSearchResult {
   website: string;
   apolloId: string;
   title: string;
+  hasEmail: boolean;
 }
 
+// Uses /v1/mixed_people/api_search — free endpoint, no credits consumed.
+// Returns obfuscated last name (e.g. "He***e"); use apolloMatchPerson to resolve if credits available.
 export async function apolloSearchPerson(
   apiKey: string,
   companyName: string,
   titles: string[],
 ): Promise<ApolloSearchResult | null> {
-  const res = await fetch("https://api.apollo.io/v1/people/search", {
+  const res = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
+      "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      api_key: apiKey,
       person_titles: titles,
-      organization_name: companyName,
+      q_organization_name: companyName,
       page: 1,
       per_page: 1,
     }),
@@ -47,9 +50,10 @@ export async function apolloSearchPerson(
     people?: Array<{
       id?: string;
       first_name?: string;
-      last_name?: string;
+      last_name_obfuscated?: string;
       title?: string;
-      organization?: { website_url?: string };
+      has_email?: boolean;
+      organization?: { name?: string; website_url?: string };
     }>;
   };
 
@@ -58,28 +62,41 @@ export async function apolloSearchPerson(
 
   return {
     firstName: person.first_name ?? "",
-    lastName: person.last_name ?? "",
+    lastName: person.last_name_obfuscated ?? "",
     website: person.organization?.website_url ?? "",
     apolloId: person.id ?? "",
     title: person.title ?? "",
+    hasEmail: person.has_email ?? false,
   };
 }
 
+// Attempts to resolve full last name + email via people/match (may require credits).
+// Returns null gracefully if credits are insufficient.
 export async function apolloMatchPerson(
   apiKey: string,
   apolloId: string,
-): Promise<string | null> {
-  const url = `https://api.apollo.io/v1/people/match?id=${encodeURIComponent(apolloId)}&api_key=${encodeURIComponent(apiKey)}`;
-
-  const res = await fetch(url, {
-    headers: { "Cache-Control": "no-cache" },
+): Promise<{ email: string; lastName: string } | null> {
+  const res = await fetch("https://api.apollo.io/v1/people/match", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-cache",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({ id: apolloId }),
   });
 
   if (!res.ok) return null;
 
   const data = (await res.json()) as {
-    person?: { email?: string };
+    person?: { email?: string; last_name?: string };
+    error?: string;
   };
 
-  return data.person?.email ?? null;
+  if (data.error) return null;
+
+  return {
+    email: data.person?.email ?? "",
+    lastName: data.person?.last_name ?? "",
+  };
 }

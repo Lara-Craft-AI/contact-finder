@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 type StreamEvent =
   | { type: "start"; total: number }
   | { type: "progress"; current: number; total: number; company: string }
-  | { type: "result"; company: string; firstName: string; lastName: string; email: string; website: string; source: "apollo" | "gemini" | "not found" }
+  | { type: "result"; company: string; firstName: string; lastName: string; email: string; website: string; hasEmail?: boolean; source: string }
   | { type: "complete" }
   | { type: "error"; message: string };
 
@@ -51,11 +51,11 @@ export default function Home() {
   const stepState = useMemo(
     () => ({
       upload: companies.length > 0,
-      config: apolloApiKey.trim().length > 0 && title.length > 0,
+      config: (geminiApiKey.trim().length > 0 || apolloApiKey.trim().length > 0) && title.length > 0,
       run: isRunning,
       results: results.length > 0,
     }),
-    [companies.length, apolloApiKey, title, isRunning, results.length],
+    [companies.length, apolloApiKey, geminiApiKey, title, isRunning, results.length],
   );
 
   async function runFinder() {
@@ -73,7 +73,7 @@ export default function Home() {
         body: JSON.stringify({
           companies,
           title,
-          apolloApiKey,
+          apolloApiKey: apolloApiKey.trim() || undefined,
           geminiApiKey: geminiApiKey.trim() || undefined,
         }),
       });
@@ -116,6 +116,7 @@ export default function Home() {
                 lastName: event.lastName,
                 email: event.email,
                 website: event.website,
+                hasEmail: event.hasEmail,
                 source: event.source,
               },
             ]);
@@ -146,8 +147,8 @@ export default function Home() {
             </h1>
             <p className="text-base leading-7 text-zinc-500">
               Paste a list of company names, choose a target title (CEO, CTO, Founder…), and get
-              back first name, last name, email, and website. Powered by Apollo (free) with Gemini
-              fallback.
+              back first name, last name, and website. Powered by Gemini with optional Apollo email
+              signal.
             </p>
           </div>
         </section>
@@ -198,7 +199,17 @@ export default function Home() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-700">
-                Apollo API key <span className="text-zinc-400">(required)</span>
+                Gemini API key <span className="text-zinc-400">(required for full results)</span>
+              </label>
+              <Input
+                placeholder="Paste your Gemini API key"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-700">
+                Apollo API key <span className="text-zinc-400">(optional — email signal)</span>
               </label>
               <Input
                 placeholder="Paste your Apollo API key"
@@ -206,21 +217,14 @@ export default function Home() {
                 onChange={(e) => setApolloApiKey(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">
-                Gemini API key <span className="text-zinc-400">(optional — fallback)</span>
-              </label>
-              <Input
-                placeholder="Paste your Gemini API key for fallback"
-                value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
-              />
-            </div>
+            <p className="text-xs text-zinc-400">
+              Gemini finds full name + website. Apollo tells you if email exists (then use email-finder).
+            </p>
             <Separator />
             <div className="flex items-center justify-between gap-4 text-sm text-zinc-600">
               <span>{companies.length} companies ready · {title || "no title"}</span>
               <Button
-                disabled={!companies.length || !apolloApiKey.trim() || !title || isRunning}
+                disabled={!companies.length || (!geminiApiKey.trim() && !apolloApiKey.trim()) || !title || isRunning}
                 onClick={() => void runFinder()}
               >
                 {isRunning ? "Running..." : "Find contacts"}

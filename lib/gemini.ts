@@ -5,6 +5,20 @@ export interface GeminiContactResult {
   confidence: number;
 }
 
+async function fetchGeminiWithRetry(
+  url: string,
+  options: RequestInit,
+  retries: number[] = [2000, 5000],
+): Promise<Response> {
+  const res = await fetch(url, options);
+  if (res.status === 429 && retries.length > 0) {
+    const delay = retries[0];
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return fetchGeminiWithRetry(url, options, retries.slice(1));
+  }
+  return res;
+}
+
 export async function geminiSearchContact(
   apiKey: string,
   companyName: string,
@@ -19,17 +33,22 @@ Return only valid JSON — no markdown, no explanation:
   "confidence": 0.0
 }`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ googleSearch: {} }],
-      }),
-    },
-  );
+  let res: Response;
+  try {
+    res = await fetchGeminiWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+        }),
+      },
+    );
+  } catch {
+    return null;
+  }
 
   if (!res.ok) return null;
 
@@ -41,7 +60,7 @@ Return only valid JSON — no markdown, no explanation:
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
-  const jsonMatch = text.match(/\{[\s\S]*?\}/);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return null;
 
   try {

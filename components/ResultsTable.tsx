@@ -20,14 +20,15 @@ export interface ContactResult {
   lastName: string;
   email: string;
   website: string;
-  source: "apollo" | "gemini" | "not found";
+  hasEmail?: boolean;
+  source: string;
 }
 
 const PAGE_SIZE = 10;
 
-function sourceBadge(source: ContactResult["source"]) {
-  if (source === "apollo") return <Badge variant="success">Apollo</Badge>;
-  if (source === "gemini") return <Badge variant="warning">Gemini</Badge>;
+function sourceBadge(source: string) {
+  if (source.includes("gemini")) return <Badge variant="warning">{source}</Badge>;
+  if (source.includes("apollo")) return <Badge variant="success">{source}</Badge>;
   return <Badge variant="secondary">Not found</Badge>;
 }
 
@@ -47,11 +48,11 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
   );
 
   function downloadCsv() {
-    const header = ["company", "firstName", "lastName", "email", "website", "source"]
+    const header = ["company", "firstName", "lastName", "email", "website", "has_email", "source"]
       .map(escapeCell)
       .join(",");
     const rows = results.map((r) =>
-      [r.company, r.firstName, r.lastName, r.email, r.website, r.source]
+      [r.company, r.firstName, r.lastName, r.email, r.website, r.hasEmail ? "true" : "false", r.source]
         .map(escapeCell)
         .join(","),
     );
@@ -87,6 +88,7 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
               <TableHead>Last</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Website</TableHead>
+              <TableHead>Has Email?</TableHead>
               <TableHead>Source</TableHead>
             </TableRow>
           </TableHeader>
@@ -98,6 +100,7 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
                 <TableCell>{row.lastName || "—"}</TableCell>
                 <TableCell className="text-sm">{row.email || "—"}</TableCell>
                 <TableCell className="text-sm text-zinc-500">{row.website || "—"}</TableCell>
+                <TableCell>{row.hasEmail ? "✓" : "—"}</TableCell>
                 <TableCell>{sourceBadge(row.source)}</TableCell>
               </TableRow>
             ))}
