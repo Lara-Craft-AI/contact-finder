@@ -1,4 +1,3 @@
-import { apolloSearchPerson, expandTitles } from "@/lib/apollo";
 import { geminiSearchContact } from "@/lib/gemini";
 
 export const runtime = "nodejs";
@@ -7,7 +6,6 @@ export const maxDuration = 300;
 interface RequestBody {
   companies: string[];
   title: string;
-  apolloApiKey?: string;
   geminiApiKey?: string;
 }
 
@@ -34,18 +32,15 @@ async function withConcurrency<T>(
 
 export async function POST(req: Request) {
   const body = (await req.json()) as RequestBody;
-  const { companies, title, apolloApiKey, geminiApiKey } = body;
+  const { companies, title, geminiApiKey } = body;
 
-  if (!companies?.length || !title || (!geminiApiKey && !apolloApiKey)) {
+  if (!companies?.length || !title || !geminiApiKey) {
     return Response.json(
-      { error: "Missing required fields: companies, title, and at least one API key" },
+      { error: "Missing required fields: companies, title, and geminiApiKey" },
       { status: 400 },
     );
   }
-
-  const titles = expandTitles(title);
   const encoder = new TextEncoder();
-  let completed = 0;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -67,38 +62,18 @@ export async function POST(req: Request) {
         try {
           let firstName = "";
           let lastName = "";
+          let jobTitle = "";
           let website = "";
-          let hasEmail = false;
           let source: string = "not found";
 
-          // Run Apollo and Gemini in parallel — they are independent
-          const [geminiResult, apolloResult] = await Promise.all([
-            geminiApiKey
-              ? geminiSearchContact(geminiApiKey, company, title)
-              : Promise.resolve(null),
-            apolloApiKey
-              ? apolloSearchPerson(apolloApiKey, company, titles)
-              : Promise.resolve(null),
-          ]);
+          const geminiResult = await geminiSearchContact(geminiApiKey, company, title);
 
           if (geminiResult) {
             firstName = geminiResult.firstName;
             lastName = geminiResult.lastName;
+            jobTitle = geminiResult.jobTitle;
             website = geminiResult.website;
             source = "gemini";
-          }
-
-          if (apolloResult) {
-            hasEmail = apolloResult.hasEmail;
-
-            if (source === "gemini") {
-              source = "apollo+gemini";
-            } else {
-              firstName = apolloResult.firstName;
-              lastName = apolloResult.lastName;
-              website = apolloResult.website;
-              source = "apollo (partial)";
-            }
           }
 
           controller.enqueue(
@@ -107,9 +82,8 @@ export async function POST(req: Request) {
                 company,
                 firstName,
                 lastName,
-                email: "",
+                jobTitle,
                 website,
-                hasEmail,
                 source,
               }),
             ),
@@ -121,17 +95,14 @@ export async function POST(req: Request) {
                 company,
                 firstName: "",
                 lastName: "",
-                email: "",
+                jobTitle: "",
                 website: "",
-                hasEmail: false,
                 source: "not found",
               }),
             ),
           );
           console.error(`Error processing ${company}:`, err);
         }
-
-        completed++;
       });
 
       controller.enqueue(encoder.encode(sseEvent("complete", {})));

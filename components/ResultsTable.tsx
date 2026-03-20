@@ -18,9 +18,8 @@ export interface ContactResult {
   company: string;
   firstName: string;
   lastName: string;
-  email: string;
+  jobTitle: string;
   website: string;
-  hasEmail?: boolean;
   source: string;
 }
 
@@ -28,7 +27,6 @@ const PAGE_SIZE = 10;
 
 function sourceBadge(source: string) {
   if (source.includes("gemini")) return <Badge variant="warning">{source}</Badge>;
-  if (source.includes("apollo")) return <Badge variant="success">{source}</Badge>;
   return <Badge variant="secondary">Not found</Badge>;
 }
 
@@ -48,11 +46,11 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
   );
 
   function downloadCsv() {
-    const header = ["company", "firstName", "lastName", "email", "website", "has_email", "source"]
+    const header = ["company", "firstName", "lastName", "jobTitle", "website", "source"]
       .map(escapeCell)
       .join(",");
     const rows = results.map((r) =>
-      [r.company, r.firstName, r.lastName, r.email, r.website, r.hasEmail ? "true" : "false", r.source]
+      [r.company, r.firstName, r.lastName, r.jobTitle, r.website, r.source]
         .map(escapeCell)
         .join(","),
     );
@@ -76,7 +74,7 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-end">
-          <Button variant="outline" onClick={downloadCsv} disabled={!results.length}>
+          <Button variant="default" onClick={downloadCsv} disabled={!results.length}>
             Download CSV
           </Button>
         </div>
@@ -86,9 +84,8 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
               <TableHead>Company</TableHead>
               <TableHead>First</TableHead>
               <TableHead>Last</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Title</TableHead>
               <TableHead>Website</TableHead>
-              <TableHead>Has Email?</TableHead>
               <TableHead>Source</TableHead>
             </TableRow>
           </TableHeader>
@@ -98,9 +95,8 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
                 <TableCell className="font-medium text-zinc-900">{row.company}</TableCell>
                 <TableCell>{row.firstName || "—"}</TableCell>
                 <TableCell>{row.lastName || "—"}</TableCell>
-                <TableCell className="text-sm">{row.email || "—"}</TableCell>
+                <TableCell className="text-sm">{row.jobTitle || "—"}</TableCell>
                 <TableCell className="text-sm text-zinc-500">{row.website || "—"}</TableCell>
-                <TableCell>{row.hasEmail ? "✓" : "—"}</TableCell>
                 <TableCell>{sourceBadge(row.source)}</TableCell>
               </TableRow>
             ))}
