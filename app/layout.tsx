@@ -14,7 +14,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Contact Finder",
-  description: "Find contacts for any company list using Apollo + Gemini.",
+  description: "Find contacts for any company list using Gemini.",
 };
 
 export default function RootLayout({

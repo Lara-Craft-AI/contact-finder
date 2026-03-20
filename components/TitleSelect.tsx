@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-const TITLES = ["CEO", "Founder", "CTO", "VP Sales", "CFO", "Custom"];
+const TITLES = ["CEO", "COO", "Founder", "CTO", "VP Sales", "CFO", "Custom"];
 
 export function TitleSelect({
   value,

@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 type StreamEvent =
   | { type: "start"; total: number }
   | { type: "progress"; current: number; total: number; company: string }
-  | { type: "result"; company: string; firstName: string; lastName: string; jobTitle: string; website: string; source: string }
+  | { type: "result"; company: string; firstName: string; lastName: string; jobTitle: string; website: string }
   | { type: "complete" }
   | { type: "error"; message: string };
 
@@ -114,7 +114,6 @@ export default function Home() {
                 lastName: event.lastName,
                 jobTitle: event.jobTitle,
                 website: event.website,
-                source: event.source,
               },
             ]);
           }

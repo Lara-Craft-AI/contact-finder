@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,15 +19,9 @@ export interface ContactResult {
   lastName: string;
   jobTitle: string;
   website: string;
-  source: string;
 }
 
 const PAGE_SIZE = 10;
-
-function sourceBadge(source: string) {
-  if (source.includes("gemini")) return <Badge variant="warning">{source}</Badge>;
-  return <Badge variant="secondary">Not found</Badge>;
-}
 
 function escapeCell(value: string) {
   return `"${value.replaceAll('"', '""')}"`;
@@ -37,7 +30,7 @@ function escapeCell(value: string) {
 export function ResultsTable({ results }: { results: ContactResult[] }) {
   const [page, setPage] = useState(1);
 
-  const foundCount = results.filter((r) => r.source !== "not found").length;
+  const foundCount = results.filter((r) => r.firstName).length;
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageResults = results.slice(
@@ -46,11 +39,11 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
   );
 
   function downloadCsv() {
-    const header = ["company", "firstName", "lastName", "jobTitle", "website", "source"]
+    const header = ["company", "firstName", "lastName", "jobTitle", "website"]
       .map(escapeCell)
       .join(",");
     const rows = results.map((r) =>
-      [r.company, r.firstName, r.lastName, r.jobTitle, r.website, r.source]
+      [r.company, r.firstName, r.lastName, r.jobTitle, r.website]
         .map(escapeCell)
         .join(","),
     );
@@ -86,7 +79,6 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
               <TableHead>Last</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Website</TableHead>
-              <TableHead>Source</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,7 +89,6 @@ export function ResultsTable({ results }: { results: ContactResult[] }) {
                 <TableCell>{row.lastName || "—"}</TableCell>
                 <TableCell className="text-sm">{row.jobTitle || "—"}</TableCell>
                 <TableCell className="text-sm text-zinc-500">{row.website || "—"}</TableCell>
-                <TableCell>{sourceBadge(row.source)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
